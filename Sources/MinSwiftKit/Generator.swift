@@ -45,31 +45,73 @@ private struct Generator<NodeType: Node>: GeneratorProtocol {
 
 extension Generator where NodeType == NumberNode {
     func generate(with context: BuildContext) -> IRValue {
-        fatalError("Not Implemented")
+        return FloatType.double.constant(node.value)
+        // fatalError("Not Implemented")
     }
 }
 
 extension Generator where NodeType == VariableNode {
     func generate(with context: BuildContext) -> IRValue {
-        fatalError("Not Implemented")
+        guard let variable = context.namedValues[node.identifier] else {
+            fatalError()
+        }
+        return variable
+        // fatalError("Not Implemented")
     }
 }
 
 extension Generator where NodeType == BinaryExpressionNode {
     func generate(with context: BuildContext) -> IRValue {
-        fatalError("Not Implemented")
+        let LHS = generateIRValue(from: node.lhs, with: context)
+        let RHS = generateIRValue(from: node.rhs, with: context)
+        switch node.operator {
+        case .addition:
+            return context.builder.buildAdd(LHS, RHS)
+        case .subtraction:
+            return context.builder.buildSub(LHS, RHS)
+        case .multication:
+            return context.builder.buildMul(LHS, RHS)
+        case .division:
+            return context.builder.buildDiv(LHS,RHS)
+        case .lessThan:
+            fatalError("Not Implemented")
+        default:
+            fatalError("Not implemented")
+        }
+        
     }
 }
 
 extension Generator where NodeType == FunctionNode {
     func generate(with context: BuildContext) -> IRValue {
-        fatalError("Not Implemented")
+        let argumentTypes = [IRType](repeating: FloatType.double, count: node.arguments.count)
+        let returnType: IRType = FloatType.double
+        let functionType = FunctionType(argTypes: argumentTypes,
+                                        returnType: returnType)
+        let function = context.builder.addFunction(node.name, type: functionType)
+        
+        let entryBasicBlock = function.appendBasicBlock(named: "entry")
+        context.builder.positionAtEnd(of: entryBasicBlock)
+        
+        context.namedValues.removeAll()
+        for i in 0..<node.arguments.count {
+            context.namedValues[node.arguments[i].variableName] = function.parameters[i]
+        }
+
+
+        let functionBody: IRValue = generateIRValue(from: node.body, with: context)
+        context.builder.buildRet(functionBody)
+        return functionBody
+        // fatalError("Not Implemented")
     }
 }
 
 extension Generator where NodeType == CallExpressionNode {
     func generate(with context: BuildContext) -> IRValue {
-        fatalError("Not Implemented")
+        let function = context.module.function(named: node.callee)!
+        let arguments: [IRValue] = node.arguments.map({generateIRValue(from: $0.value, with: context)})
+        return context.builder.buildCall(function, args: arguments, name: "calltmp")
+        // fatalError("Not Implemented")
     }
 }
 
